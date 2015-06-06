@@ -1,0 +1,321 @@
+require 'securerandom'
+
+# Pure Ruby implementation of Salsa20.
+# @ see http://cr.yp.to/snuffle/salsafamily-20071225.pdf
+# @note Do not use in production. This is just an experiment.
+module Salsa20
+  # Sample 16 byte input:
+  # 0x61707865, 0x04030201, 0x08070605, 0x0c0b0a09,
+  # 0x100f0e0d, 0x3320646e, 0x01040103, 0x06020905,
+  # 0x00000007, 0x00000000, 0x79622d32, 0x14131211,
+  # 0x18171615, 0x1c1b1a19, 0x201f1e1d, 0x6b206574.
+  #
+  # end of round 1:
+  # 0x4dfdec95, 0xd3c83331, 0x71572c6d, 0xf3e4deb6,
+  # 0xcc266b9b, 0xe78e794b, 0x91b3379b, 0xbb230990,
+  # 0xdc64a31d, 0x95f3bcee, 0xf94fe453, 0x130804a0,
+  # 0x95b0c8b6, 0xa45e5d04, 0xf0a45550, 0xa272317e.
+  #
+  # end of round 2:
+  # 0xba2409b1, 0x1b7cce6a, 0x29115dcf, 0x5037e027,
+  # 0x37b75378, 0x348d94c8, 0x3ea582b3, 0xc3a9a148,
+  # 0x825bfcb9, 0x226ae9eb, 0x63dd7748, 0x7129a215,
+  # 0x4effd1ec, 0x5f25dc72, 0xa6c3d164, 0x152a26d8.
+  #
+  # end of round 20:
+  # 0x58318d3e, 0x0292df4f, 0xa28d8215, 0xa1aca723,
+  # 0x697a34c7, 0xf2f00ba8, 0x63e9b0a1, 0x27250e3a,
+  # 0xb1c7f1f3, 0x62066edc, 0x66d3ccf1, 0xb0365cf3,
+  # 0x091ad09e, 0x64f0c40f, 0xd60d95ea, 0x00be78c9.
+  #
+  # output block:
+  # 0xb9a205a3, 0x0695e150, 0xaa94881a, 0xadb7b12c,
+  # 0x798942d4, 0x26107016, 0x64edb1a4, 0x2d27173f,
+  # 0xb1c7f1fa, 0x62066edc, 0xe035fa23, 0xc4496f04,
+  # 0x2131e6b3, 0x810bde28, 0xf62cb407, 0x6bdede3d.
+
+  # Salsa20 hash function, also called Salsa20 core. This one uses 20 rounds,
+  # as recommended for high security.
+  class Core
+    WORD_WIDTH = 32 # bits
+    WORD = 2**WORD_WIDTH - 1 # used to truncate bits
+
+    # TODO: different constants for different key sizes
+    SALSA_CONSTANT = [0x61707865, 0x3320646e, 0x79622d32, 0x6b206574]
+
+    def self.key_size
+      32 # bytes
+    end
+
+    def self.nonce_size
+      8 # bytes
+    end
+
+    attr_reader :key, :nonce, :block
+
+    def initialize(key, nonce)
+      @key_words = key.unpack("V*")
+      @nonce_words = nonce.unpack("V*")
+    end
+
+    def block(count)
+      new_input_block(count)
+      hash
+    end
+
+    private
+
+    def new_input_block(count)
+      # OPTIMIZE: Cache block, duplicate it and update only counter words
+      k = @key_words
+      n = @nonce_words
+      c = SALSA_CONSTANT
+      b = [ count & WORD, (count >> 32) & WORD ] # block counter words
+      @block = [
+        c[0], k[0], k[1], k[2],
+        k[3], c[1], n[0], n[1],
+        b[0], b[1], c[2], k[4],
+        k[5], k[6], k[7], c[3],
+      ]
+    end
+
+    def hash
+      original_block = @block.dup
+      (rounds/2).times { double_round }
+      add_block(@block, original_block).pack("V*")
+      #.tap{|ob| puts "output block: #{ob.unpack("V*").map {|n| "0x%x" % n }}"}
+    end
+
+    # Number of rounds. Recommended for high security are 20 rounds.
+    def rounds() 20 end
+
+    # Compute double round (two rounds in one go), to avoid transposing the
+    # block array.
+    def double_round
+      # first column
+      @block[ 4] ^= rotate_left(add(@block[ 0], @block[12]), 7)
+      @block[ 8] ^= rotate_left(add(@block[ 4], @block[ 0]), 9)
+      @block[12] ^= rotate_left(add(@block[ 8], @block[ 4]),13)
+      @block[ 0] ^= rotate_left(add(@block[12], @block[ 8]),18)
+
+      # second column
+      @block[ 9] ^= rotate_left(add(@block[ 5], @block[ 1]), 7)
+      @block[13] ^= rotate_left(add(@block[ 9], @block[ 5]), 9)
+      @block[ 1] ^= rotate_left(add(@block[13], @block[ 9]),13)
+      @block[ 5] ^= rotate_left(add(@block[ 1], @block[13]),18)
+
+      # third column
+      @block[14] ^= rotate_left(add(@block[10], @block[ 6]), 7)
+      @block[ 2] ^= rotate_left(add(@block[14], @block[10]), 9)
+      @block[ 6] ^= rotate_left(add(@block[ 2], @block[14]),13)
+      @block[10] ^= rotate_left(add(@block[ 6], @block[ 2]),18)
+
+      # fourth column
+      @block[ 3] ^= rotate_left(add(@block[15], @block[11]), 7)
+      @block[ 7] ^= rotate_left(add(@block[ 3], @block[15]), 9)
+      @block[11] ^= rotate_left(add(@block[ 7], @block[ 3]),13)
+      @block[15] ^= rotate_left(add(@block[11], @block[ 7]),18)
+
+      # first row
+      @block[ 1] ^= rotate_left(add(@block[ 0], @block[ 3]), 7)
+      @block[ 2] ^= rotate_left(add(@block[ 1], @block[ 0]), 9)
+      @block[ 3] ^= rotate_left(add(@block[ 2], @block[ 1]),13)
+      @block[ 0] ^= rotate_left(add(@block[ 3], @block[ 2]),18)
+
+      # second row
+      @block[ 6] ^= rotate_left(add(@block[ 5], @block[ 4]), 7)
+      @block[ 7] ^= rotate_left(add(@block[ 6], @block[ 5]), 9)
+      @block[ 4] ^= rotate_left(add(@block[ 7], @block[ 6]),13)
+      @block[ 5] ^= rotate_left(add(@block[ 4], @block[ 7]),18)
+
+      # third row
+      @block[11] ^= rotate_left(add(@block[10], @block[ 9]), 7)
+      @block[ 8] ^= rotate_left(add(@block[11], @block[10]), 9)
+      @block[ 9] ^= rotate_left(add(@block[ 8], @block[11]),13)
+      @block[10] ^= rotate_left(add(@block[ 9], @block[ 8]),18)
+
+      # fourth row
+      @block[12] ^= rotate_left(add(@block[15], @block[14]), 7)
+      @block[13] ^= rotate_left(add(@block[12], @block[15]), 9)
+      @block[14] ^= rotate_left(add(@block[13], @block[12]),13)
+      @block[15] ^= rotate_left(add(@block[14], @block[13]),18)
+    end
+
+    def add_block(a, b)
+      a.zip(b).map { |a, b| add(a, b) }
+    end
+
+    def add(a, b)
+      (a + b) & WORD
+    end
+
+    def rotate_left(word, n)
+      ((word << n) | (word >> (WORD_WIDTH - n))) & WORD
+    end
+  end
+
+  Core20 = Core
+
+  # Salsa20/12. Use only if you value speed more than confidentiality.
+  # Actually, if you value speed at all, don't use this code.
+  class Core12 < Core
+    def rounds() 12 end
+  end
+
+  # Salsa20/8. Use only if you value speed more than confidentiality.
+  # Actually, if you value speed at all, don't use this code.
+  class Core8 < Core
+    def rounds() 8 end
+  end
+
+  class Stream
+    MAX = (2**70)/64 # only first 2^70 bytes of stream are usable
+
+    def initialize(hash_class, key, nonce)
+      @hasher = hash_class.new(key, nonce)
+      @enumerator = Enumerator.new(MAX) do |stream|
+        0.upto(MAX) do |counter|
+          stream << @hasher.block(counter)
+        end
+      end
+    end
+
+    def next_block
+      @enumerator.next
+        #.tap{|b| puts "next block: #{b.unpack("V*").map {|n| "0x%x" % n }}"}
+    end
+  end
+
+  class Box
+    attr_reader :key
+
+    def initialize(key=random_key, hash_class=Core20)
+      @key = key
+      @hash_class = hash_class
+      raise "unsupported key length" if key.bytesize != key_size
+    end
+
+    def encrypt(msg)
+      nonce = random_nonce
+      cipher_text = crypt(msg, new_stream(nonce))
+#      puts "nonce: #{nonce.unpack("V*").map {|n| "0x%x" % n }}"
+#      puts "ctx: #{cipher_text.unpack("V*").map {|n| "0x%x" % n }}"
+      "#{nonce}#{cipher_text}"
+    end
+
+    def decrypt(msg)
+      nonce = msg.byteslice(0, nonce_size)
+      msg = msg.byteslice(nonce_size..-1)
+      crypt(msg, new_stream(nonce))
+    end
+
+    private
+
+    def crypt(msg, cipher_stream)
+      msg.bytes.each_slice(64).map do |msg_block|
+        #puts "message block: #{msg_block.pack("C*").unpack("V*").map {|n| "0x%x" % n }}"
+        cipher_block = cipher_stream.next_block.bytes
+        #puts "cipher block: #{cipher_block.pack("C*").unpack("V*").map {|n| "0x%x" % n }}"
+        msg_block.zip(cipher_block).map { |m,c| m ^ c }
+      end.flatten.
+      #tap{|b| puts "en/decrypted block: #{b.pack("C*").unpack("V*").map {|n| "0x%x" % n }}"}.
+      pack("C*")
+    end
+
+    def new_stream(nonce)
+      Stream.new(@hash_class, @key, nonce)
+    end
+
+    def random_key
+      SecureRandom.random_bytes(key_size)
+    end
+
+    def random_nonce
+      SecureRandom.random_bytes(nonce_size)
+    end
+
+    def key_size
+      @hash_class.key_size
+    end
+
+    def nonce_size
+      @hash_class.nonce_size
+    end
+  end
+
+  # Provides sane defaults for users who have no croptography knowledge.
+  class SimpleBox < Box
+    def initialize
+      super(random_key, Core20)
+    end
+  end
+end
+
+module Poly1305
+  class ClampP
+  end
+end
+
+TEST_KEY = (1..32).to_a.pack("C*")
+TEST_NONCE = [ 3,1,4,1,5,9,2,6 ].pack("C*")
+TEST_CTR = 7
+#(1..32).to_a.pack("C*").unpack("V*").map {|n| "0x%x" % n }
+#=> ["0x4030201", "0x8070605", "0xc0b0a09", "0x100f0e0d", "0x14131211", "0x18171615", "0x1c1b1a19", "0x201f1e1d"]
+
+TEST_MSG = "abcd efg hijkl foo bar"
+
+
+#salsa20 = Salsa20::Core.new(TEST_KEY, TEST_NONCE)
+#salsa20.hash
+puts "TEST_MSG: #{TEST_MSG.bytesize}"
+puts "TEST_MSG size: #{TEST_MSG}"
+box = Salsa20::Box.new(TEST_KEY)
+ctx = box.encrypt(TEST_MSG)
+puts "cipher text size: #{ctx.bytesize}"
+puts "cipher text: #{ctx.dump}"
+
+box2 = Salsa20::Box.new(TEST_KEY)
+ptx = box2.decrypt(ctx)
+
+if ptx == TEST_MSG
+  puts "Salsa20: SAME!"
+else
+  puts "Salsa20: not the same :("
+end
+
+
+
+require 'benchmark/ips'
+
+msg = "abcd efgh ijkl mnop qrst uvw xyz"
+puts "original msg: #{msg}"
+
+# Salsa20
+box20 = Salsa20::Box.new(TEST_KEY, Salsa20::Core20)
+msg20 = box20.decrypt(box20.encrypt(msg))
+puts "msg20: #{msg20}"
+msg20 == msg or raise "box20 broken"
+
+box12 = Salsa20::Box.new(TEST_KEY, Salsa20::Core12)
+msg12 = box12.decrypt(box12.encrypt(msg))
+puts "msg12: #{msg12}"
+msg12 == msg or raise "box12 broken"
+
+box8 = Salsa20::Box.new(TEST_KEY, Salsa20::Core8)
+msg8 = box8.decrypt(box8.encrypt(msg))
+puts "msg8: #{msg8}"
+msg8 == msg or raise "box8 broken"
+
+Benchmark.ips do |x|
+  x.report("Salsa20/20") do
+    box20.decrypt(box20.encrypt(msg))
+  end
+
+  x.report("Salsa20/12") do
+    box12.decrypt(box12.encrypt(msg))
+  end
+
+  x.report("Salsa20/8") do
+    box8.decrypt(box8.encrypt(msg))
+  end
+end
