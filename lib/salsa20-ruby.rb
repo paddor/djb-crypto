@@ -168,6 +168,88 @@ module Salsa20
     def rounds() 8 end
   end
 
+  class HSalsa20 < Core
+    NONCE_SIZE = 16 # bytes
+
+    def new_input_block(count)
+      k = @key_words
+      n = @nonce_words
+      c = SALSA_CONSTANT
+      @block = [
+        c[0], k[0], k[1], k[2],
+        k[3], c[1], n[0], n[1],
+        n[2], n[3], c[2], k[4],
+        k[5], k[6], k[7], c[3],
+      ]
+    end
+
+    def hash
+      (rounds/2).times { double_round }
+      output_block.pack("V*")
+      #.tap{|ob| puts "output block: #{ob.unpack("V*").map {|n| "0x%x" % n }}"}
+    end
+
+    private
+
+    def output_block
+      z = @block
+      [
+        z[0], z[5], z[10], z[15],
+        z[6], z[7], z[ 8], z[ 9],
+      ]
+    end
+  end
+
+  # XSalsa20.
+  #
+  # Basically Salsa20 with a much bigger nonce.
+  #
+  # This is a "two-level generalized cascade": Using HSalsa20 one single block
+  # is computed, part of which then is used as the key for subsequent blocks
+  # computed using Salsa20.
+  #
+  # @see http://cr.yp.to/snuffle/xsalsa-20110204.pdf
+  class XSalsa20 < Core
+    def self.nonce_size
+      24 # bytes
+    end
+
+    def initialize(key, nonce)
+      super
+      initialize_block
+    end
+
+    # This is basically computing one single HSalsa20 block.
+    def initialize_block
+      k = @key_words
+      n = @nonce_words
+      c = SALSA_CONSTANT
+      @block = [
+        c[0], k[0], k[1], k[2],
+        k[3], c[1], n[0], n[1],
+        n[2], n[3], c[2], k[4],
+        k[5], k[6], k[7], c[3],
+      ]
+#      puts "first block: #{@block}"
+      (rounds/2).times { double_round }
+      @z_words = @block.dup
+    end
+
+    def new_input_block(count)
+      # OPTIMIZE: Cache block, duplicate it and update only counter words
+      z = @z_words
+      n = @nonce_words
+      c = SALSA_CONSTANT
+      b = [ count & WORD, (count >> 32) & WORD ] # block counter words
+      @block = [
+        c[0 ], z[ 0], z[ 5], z[10],
+        z[15], c[ 1], n[ 4], n[ 5],
+        b[0 ], b[ 1], c[ 2], z[ 6],
+        z[7 ], z[ 8], z[ 9], c[ 3],
+      ]
+    end
+  end
+
   class Stream
     MAX = (2**70)/64 # only first 2^70 bytes of stream are usable
 
@@ -285,6 +367,19 @@ end
 
 
 
+box = Salsa20::Box.new(TEST_KEY, Salsa20::XSalsa20)
+ctx = box.encrypt(TEST_MSG)
+puts "cipher text size: #{ctx.bytesize}"
+puts "cipher text: #{ctx.dump}"
+ptx = box.decrypt(ctx)
+if ptx == TEST_MSG
+  puts "XSalsa20: SAME!"
+else
+  puts "XSalsa20: not the same :("
+end
+
+
+
 require 'benchmark/ips'
 
 msg = "abcd efgh ijkl mnop qrst uvw xyz"
@@ -306,6 +401,12 @@ msg8 = box8.decrypt(box8.encrypt(msg))
 puts "msg8: #{msg8}"
 msg8 == msg or raise "box8 broken"
 
+# XSalsa20
+boxx20 = Salsa20::Box.new(TEST_KEY, Salsa20::XSalsa20)
+msgx20 = boxx20.decrypt(boxx20.encrypt(msg))
+puts "msg20: #{msgx20}"
+msgx20 == msg or raise "box20 broken"
+
 Benchmark.ips do |x|
   x.report("Salsa20/20") do
     box20.decrypt(box20.encrypt(msg))
@@ -317,5 +418,9 @@ Benchmark.ips do |x|
 
   x.report("Salsa20/8") do
     box8.decrypt(box8.encrypt(msg))
+  end
+
+  x.report("XSalsa20/20") do
+    boxx20.decrypt(boxx20.encrypt(msg))
   end
 end
