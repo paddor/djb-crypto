@@ -1,4 +1,4 @@
-require_relative '../lib/salsa20-ruby'
+require_relative '../lib/djb-crypto'
 
 TEST_KEY = (1..32).to_a.pack("C*")
 TEST_NONCE = [ 3,1,4,1,5,9,2,6 ].pack("C*")
