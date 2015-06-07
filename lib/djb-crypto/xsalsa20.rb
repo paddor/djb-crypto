@@ -69,11 +69,10 @@ module DjbCrypto
     end
 
     def new_input_block(count)
-      # OPTIMIZE: Cache block, duplicate it and update only counter words
       z = @z_words
       n = @nonce_words
       c = SALSA_CONSTANT
-      b = [ count & WORD, (count >> 32) & WORD ] # block counter words
+      b = [ count & WORD, (count >> WORD_WIDTH) & WORD ] # block counter words
       @block = [
         c[0 ], z[ 0], z[ 5], z[10],
         z[15], c[ 1], n[ 4], n[ 5],

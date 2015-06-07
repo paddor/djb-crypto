@@ -70,11 +70,10 @@ module DjbCrypto
     # Prepares the input block for the next output block.
     # @param count [Integer] block number
     def new_input_block(count)
-      # OPTIMIZE: Cache block, duplicate it and update only counter words
       k = @key_words
       n = @nonce_words
       c = SALSA_CONSTANT
-      b = [ count & WORD, (count >> 32) & WORD ] # block counter words
+      b = [ count & WORD, (count >> WORD_WIDTH) & WORD ] # block counter words
       @block = [
         c[0], k[0], k[1], k[2],
         k[3], c[1], n[0], n[1],
