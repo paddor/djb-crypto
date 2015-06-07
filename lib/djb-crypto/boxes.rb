@@ -66,11 +66,11 @@ module DjbCrypto
     end
 
     def key_size
-      @hash_class.key_size
+      @key_size ||= @hash_class.key_size
     end
 
     def nonce_size
-      @hash_class.nonce_size
+      @nonce_size ||= @hash_class.nonce_size
     end
   end
 
