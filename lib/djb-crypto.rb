@@ -6,13 +6,6 @@ require 'securerandom'
 # @note Do not use in production. This is just an experiment.
 # @author Patrik Wenger <paddor@gmail.com>
 #
-# Even though these implementations should produce correct results, they
-# probably don't provide high security because Ruby handles different sizes of
-# integers differently, which might allow side-channel attacks (such as timing
-# attacks). Furthermore, this code isn't fast at all, since it's pure Ruby.
-# If you're interested in using any of these primitives or sane combinations
-# of them in Ruby, please refer to the excellent library RbNaCl.
-# @see https://github.com/cryptosphere/rbnacl
 module DjbCrypto
   # Salsa20 hash function, also called Salsa20 core.
   #
