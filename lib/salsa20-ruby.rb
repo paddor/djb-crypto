@@ -72,7 +72,7 @@ module DjbCrypto
     # @return [String] output block
     def block(count)
       new_input_block(count)
-      hash
+      hash.pack("V*")
     end
 
     # @abstract
@@ -98,10 +98,12 @@ module DjbCrypto
       ]
     end
 
+    # Calculates the output block for the current input block.
+    # @return [Array<Integer>] output block
     def hash
       original_block = @block.dup
       (rounds/2).times { double_round }
-      add_block(@block, original_block).pack("V*")
+      add_block(@block, original_block)
       #.tap{|ob| puts "output block: #{ob.unpack("V*").map {|n| "0x%x" % n }}"}
     end
 
