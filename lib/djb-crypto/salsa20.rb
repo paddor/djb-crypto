@@ -36,8 +36,14 @@ module DjbCrypto
     WORD_WIDTH = 32 # bits
     WORD = 2**WORD_WIDTH - 1 # used to truncate bits
 
-    # TODO: different constants for different key sizes
-    SALSA_CONSTANT = [0x61707865, 0x3320646e, 0x79622d32, 0x6b206574]
+    # Salsa constant for 32-byte keys
+    SALSA_CONST32 = [0x61707865, 0x3320646e, 0x79622d32, 0x6b206574].freeze
+
+    # Salsa constant for 16-byte keys
+    SALSA_CONST16 = [0x61707865, 0x3120646e, 0x79622d36, 0x6b206574].freeze
+
+    # Salsa constant for 10-byte keys
+    SALSA_CONST10 = [0x61707865, 0x3120646e, 0x79622d30, 0x6b206574].freeze
 
     # @return [Integer] key size in bytes
     def self.key_size() 32 end
@@ -48,6 +54,8 @@ module DjbCrypto
     attr_reader :key, :nonce, :block
 
     def initialize(key, nonce)
+      key = expand_key(key) if key.size < self.class.key_size
+      @salsa_constant ||= SALSA_CONST32
       @key_words = key.unpack("V*")
       @nonce_words = nonce.unpack("V*")
     end
@@ -67,12 +75,29 @@ module DjbCrypto
 
     private
 
+    # Expands 16-byte and 10-byte keys to a 32-byte key and sets the Salsa
+    # constant accordingly.
+    # @param key [String] key which is shorter than 32 byte
+    # @return [String] expanded key
+    def expand_key(key)
+      case key.size
+      when 16
+        @salsa_constant = SALSA_CONST16
+        return key * 2
+      when 10
+        @salsa_constant = SALSA_CONST10
+        return "#{key}\0\0\0\0\0\0" * 2
+      else
+        raise "unsupported key length"
+      end
+    end
+
     # Prepares the input block for the next output block.
     # @param count [Integer] block number
     def new_input_block(count)
       k = @key_words
       n = @nonce_words
-      c = SALSA_CONSTANT
+      c = @salsa_constant
       b = [ count & WORD, (count >> WORD_WIDTH) & WORD ] # block counter words
       @block = [
         c[0], k[0], k[1], k[2],

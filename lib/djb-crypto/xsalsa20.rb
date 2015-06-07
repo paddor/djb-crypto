@@ -5,7 +5,7 @@ module DjbCrypto
     def new_input_block(count)
       k = @key_words
       n = @nonce_words
-      c = SALSA_CONSTANT
+      c = @salsa_constant
       @block = [
         c[0], k[0], k[1], k[2],
         k[3], c[1], n[0], n[1],
@@ -54,7 +54,7 @@ module DjbCrypto
     def initialize_block
       k = @key_words
       n = @nonce_words
-      c = SALSA_CONSTANT
+      c = @salsa_constant
       @block = [
         c[0], k[0], k[1], k[2],
         k[3], c[1], n[0], n[1],
@@ -69,7 +69,7 @@ module DjbCrypto
     def new_input_block(count)
       z = @z_words
       n = @nonce_words
-      c = SALSA_CONSTANT
+      c = @salsa_constant
       b = [ count & WORD, (count >> WORD_WIDTH) & WORD ] # block counter words
       @block = [
         c[0 ], z[ 0], z[ 5], z[10],
