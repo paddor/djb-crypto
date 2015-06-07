@@ -40,7 +40,7 @@ module DjbCrypto
   # computed using Salsa20.
   #
   # @see http://cr.yp.to/snuffle/xsalsa-20110204.pdf
-  class XSalsa20 < Salsa20Core
+  class XSalsa20Core < Salsa20Core
     def self.nonce_size
       24 # bytes
     end
@@ -49,8 +49,6 @@ module DjbCrypto
       super
       initialize_block
     end
-
-    def rounds() 20 end
 
     # This is basically computing one single HSalsa20 block.
     def initialize_block
@@ -80,5 +78,15 @@ module DjbCrypto
         z[7 ], z[ 8], z[ 9], c[ 3],
       ]
     end
+  end
+
+  class XSalsa2020 < XSalsa20Core
+    def rounds() 20 end
+  end
+  class XSalsa2012 < XSalsa20Core
+    def rounds() 12 end
+  end
+  class XSalsa208 < XSalsa20Core
+    def rounds() 8 end
   end
 end

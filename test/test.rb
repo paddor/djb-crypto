@@ -29,7 +29,7 @@ end
 
 
 
-box = DjbCrypto::Box.new(TEST_KEY, DjbCrypto::XSalsa20)
+box = DjbCrypto::Box.new(TEST_KEY, DjbCrypto::XSalsa2020)
 ctx = box.encrypt(TEST_MSG)
 puts "cipher text size: #{ctx.bytesize}"
 puts "cipher text: #{ctx.dump}"
@@ -64,7 +64,7 @@ puts "msg8: #{msg8}"
 msg8 == msg or raise "box8 broken"
 
 # XSalsa20
-boxx20 = DjbCrypto::Box.new(TEST_KEY, DjbCrypto::XSalsa20)
+boxx20 = DjbCrypto::Box.new(TEST_KEY, DjbCrypto::XSalsa2020)
 msgx20 = boxx20.decrypt(boxx20.encrypt(msg))
 puts "msg20: #{msgx20}"
 msgx20 == msg or raise "box20 broken"
