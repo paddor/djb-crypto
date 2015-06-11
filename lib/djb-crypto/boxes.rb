@@ -14,6 +14,12 @@ module DjbCrypto
     def next_block
       @enumerator.next
     end
+
+    def next_bytes(n)
+      bytes = ""
+      bytes << next_block while bytes.bytesize < n
+      return bytes.byteslice(0, n)
+    end
   end
 
   class Box
