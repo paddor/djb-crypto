@@ -13,7 +13,6 @@ module DjbCrypto
 
     def next_block
       @enumerator.next
-        #.tap{|b| puts "next block: #{b.unpack("V*").map {|n| "0x%x" % n }}"}
     end
   end
 
@@ -29,8 +28,6 @@ module DjbCrypto
     def encrypt(msg)
       nonce = random_nonce
       cipher_text = crypt(msg, new_stream(nonce))
-#      puts "nonce: #{nonce.unpack("V*").map {|n| "0x%x" % n }}"
-#      puts "ctx: #{cipher_text.unpack("V*").map {|n| "0x%x" % n }}"
       "#{nonce}#{cipher_text}"
     end
 
@@ -44,12 +41,9 @@ module DjbCrypto
 
     def crypt(msg, cipher_stream)
       msg.bytes.each_slice(64).map do |msg_block|
-        #puts "message block: #{msg_block.pack("C*").unpack("V*").map {|n| "0x%x" % n }}"
         cipher_block = cipher_stream.next_block.bytes
-        #puts "cipher block: #{cipher_block.pack("C*").unpack("V*").map {|n| "0x%x" % n }}"
         msg_block.zip(cipher_block).map { |m,c| m ^ c }
       end.flatten.
-      #tap{|b| puts "en/decrypted block: #{b.pack("C*").unpack("V*").map {|n| "0x%x" % n }}"}.
       pack("C*")
     end
 
