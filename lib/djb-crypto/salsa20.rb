@@ -54,9 +54,8 @@ module DjbCrypto
     attr_reader :key, :nonce, :block
 
     def initialize(key, nonce)
-      key = expand_key(key) if key.size < self.class.key_size
-      @salsa_constant ||= SALSA_CONST32
-      @key_words = key.unpack("V*")
+      @key_words = expand_key(key).unpack("V*")
+      raise "unsupported nonce size" if nonce.bytesize != self.class.nonce_size
       @nonce_words = nonce.unpack("V*")
     end
 
@@ -80,12 +79,15 @@ module DjbCrypto
     # @param key [String] key which is shorter than 32 byte
     # @return [String] expanded key
     def expand_key(key)
-      case key.size
+      case key.bytesize
+      when 32
+        @constant = SALSA_CONST32
+        return key
       when 16
-        @salsa_constant = SALSA_CONST16
+        @constant = SALSA_CONST16
         return key * 2
       when 10
-        @salsa_constant = SALSA_CONST10
+        @constant = SALSA_CONST10
         return "#{key}\0\0\0\0\0\0" * 2
       else
         raise "unsupported key length"
@@ -95,15 +97,15 @@ module DjbCrypto
     # Prepares the input block for the next output block.
     # @param count [Integer] block number
     def new_input_block(count)
-      k = @key_words
-      n = @nonce_words
-      c = @salsa_constant
-      b = [ count & WORD, (count >> WORD_WIDTH) & WORD ] # block counter words
+      k0, k1, k2, k3, k4, k5, k6, k7 = @key_words
+      *, n0, n1 = @nonce_words
+      c0, c1, c2, c3 = @constant
+      b0, b1 = count & WORD, (count >> WORD_WIDTH) & WORD # block counter words
       @block = [
-        c[0], k[0], k[1], k[2],
-        k[3], c[1], n[0], n[1],
-        b[0], b[1], c[2], k[4],
-        k[5], k[6], k[7], c[3],
+        c0, k0, k1, k2,
+        k3, c1, n0, n1,
+        b0, b1, c2, k4,
+        k5, k6, k7, c3,
       ]
     end
 
@@ -111,13 +113,17 @@ module DjbCrypto
     # @return [Array<Integer>] output block
     def hash
       original_block = @block.dup
-      (rounds/2).times { double_round }
+      diffuse
       add_block(@block, original_block)
-      #.tap{|ob| puts "output block: #{ob.unpack("V*").map {|n| "0x%x" % n }}"}
     end
 
-    # Compute double round (two rounds in one go), to avoid transposing the
-    # block array.
+    # Diffuses the current block using {#rounds}/2 double rounds.
+    def diffuse
+      (rounds/2).times { double_round }
+    end
+
+    # Compute double round (two rounds in one go). This avoids having to
+    # transpose the block.
     def double_round
       # first column
       @block[ 4] ^= rotate_left(add(@block[ 0], @block[12]), 7)

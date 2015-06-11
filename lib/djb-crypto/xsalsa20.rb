@@ -1,39 +1,7 @@
 module DjbCrypto
-  class HSalsa20 < Salsa20Core
-    NONCE_SIZE = 16 # bytes
-
-    def new_input_block(count)
-      k = @key_words
-      n = @nonce_words
-      c = @salsa_constant
-      @block = [
-        c[0], k[0], k[1], k[2],
-        k[3], c[1], n[0], n[1],
-        n[2], n[3], c[2], k[4],
-        k[5], k[6], k[7], c[3],
-      ]
-    end
-
-    def hash
-      (rounds/2).times { double_round }
-      output_block.pack("V*")
-      #.tap{|ob| puts "output block: #{ob.unpack("V*").map {|n| "0x%x" % n }}"}
-    end
-
-    private
-
-    def output_block
-      z = @block
-      [
-        z[0], z[5], z[10], z[15],
-        z[6], z[7], z[ 8], z[ 9],
-      ]
-    end
-  end
-
   # XSalsa20.
   #
-  # Basically Salsa20 with a much bigger nonce.
+  # Basically Salsa20, but with a much bigger nonce.
   #
   # This is a "two-level generalized cascade": Using HSalsa20 one single block
   # is computed, part of which then is used as the key for subsequent blocks
@@ -47,35 +15,38 @@ module DjbCrypto
 
     def initialize(key, nonce)
       super
-      initialize_block
+      @cascade_key = cascade_key
     end
 
-    # This is basically computing one single HSalsa20 block.
-    def initialize_block
-      k = @key_words
-      n = @nonce_words
-      c = @salsa_constant
+    private
+
+    # This is basically computing one single HSalsa20 block, but returning
+    # only the relevant 8 words (called "z-words" in the paper).
+    def cascade_key
+      k0, k1, k2, k3, k4, k5, k6, k7 = @key_words
+      n0, n1, n2, n3 = @nonce_words
+      c0, c1, c2, c3 = @constant
       @block = [
-        c[0], k[0], k[1], k[2],
-        k[3], c[1], n[0], n[1],
-        n[2], n[3], c[2], k[4],
-        k[5], k[6], k[7], c[3],
+        c0, k0, k1, k2,
+        k3, c1, n0, n1,
+        n2, n3, c2, k4,
+        k5, k6, k7, c3,
       ]
-#      puts "first block: #{@block}"
-      (rounds/2).times { double_round }
-      @z_words = @block.dup
+      diffuse
+      z = @block
+      return z[0], z[5], z[10], z[15], z[6], z[7], z[8], z[9]
     end
 
     def new_input_block(count)
-      z = @z_words
-      n = @nonce_words
-      c = @salsa_constant
-      b = [ count & WORD, (count >> WORD_WIDTH) & WORD ] # block counter words
+      k0, k1, k2, k3, k4, k5, k6, k7 = @cascade_key
+      *, n4, n5 = @nonce_words
+      c0, c1, c2, c3 = @constant
+      b0, b1 = count & WORD, (count >> WORD_WIDTH) & WORD # block counter words
       @block = [
-        c[0 ], z[ 0], z[ 5], z[10],
-        z[15], c[ 1], n[ 4], n[ 5],
-        b[0 ], b[ 1], c[ 2], z[ 6],
-        z[7 ], z[ 8], z[ 9], c[ 3],
+        c0, k0, k1, k2,
+        k3, c1, n4, n5,
+        b0, b1, c2, k4,
+        k5, k6, k7, c3,
       ]
     end
   end

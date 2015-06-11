@@ -11,5 +11,6 @@ end
 
 require_relative 'djb-crypto/salsa20'
 require_relative 'djb-crypto/xsalsa20'
+require_relative 'djb-crypto/chacha'
 require_relative 'djb-crypto/poly1305'
 require_relative 'djb-crypto/boxes'
