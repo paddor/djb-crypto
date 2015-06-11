@@ -25,8 +25,7 @@ module DjbCrypto
       raise "unsupported key length" if key.bytesize != key_size
     end
 
-    def encrypt(msg)
-      nonce = random_nonce
+    def encrypt(msg, nonce=random_nonce)
       cipher_text = crypt(msg, new_stream(nonce))
       "#{nonce}#{cipher_text}"
     end
@@ -72,6 +71,10 @@ module DjbCrypto
   class SimpleBox < Box
     def initialize
       super(random_key, Salsa2020)
+    end
+
+    def encrypt(msg)
+      super(msg)
     end
   end
 end
