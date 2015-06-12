@@ -7,7 +7,7 @@ module DjbCrypto
       @hasher = hash_class.new(key, nonce)
       @enumerator = Enumerator.new(MAX) do |stream|
         0.upto(MAX) do |counter|
-          @hasher.block(counter).each_byte { |b| stream << b }
+          @hasher.block(counter).each_byte { |byte| stream << byte }
         end
       end
     end
