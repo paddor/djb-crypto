@@ -23,7 +23,8 @@ module DjbCrypto
     end
   end
 
-  class Box
+  # Used for secret key encryption.
+  class SecretBox
     attr_reader :key
 
     def initialize(key=random_key, hash_class=Salsa2020)
@@ -75,7 +76,7 @@ module DjbCrypto
   end
 
   # Provides sane defaults for users who have no croptography knowledge.
-  class SimpleBox < Box
+  class SimpleBox < SecretBox
     def initialize
       super(random_key, Salsa2020)
     end

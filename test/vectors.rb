@@ -14,12 +14,12 @@ require_relative '../lib/djb-crypto'
 ##salsa20.hash
 #puts "TEST_MSG: #{TEST_MSG.bytesize}"
 #puts "TEST_MSG size: #{TEST_MSG}"
-#box = DjbCrypto::Box.new(TEST_KEY)
+#box = DjbCrypto::SecretBox.new(TEST_KEY)
 #ctx = box.encrypt(TEST_MSG)
 #puts "cipher text size: #{ctx.bytesize}"
 #puts "cipher text: #{ctx.dump}"
 #
-#box2 = DjbCrypto::Box.new(TEST_KEY)
+#box2 = DjbCrypto::SecretBox.new(TEST_KEY)
 #ptx = box2.decrypt(ctx)
 #
 #if ptx == TEST_MSG

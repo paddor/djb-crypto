@@ -7,41 +7,41 @@ TEST_KEY = (1..32).to_a.pack("C*")
 SMALL_MSG = "abcd efgh ijkl mnop qrst uvwx xyz 123456"
 
 # Salsa20
-box20 = DjbCrypto::Box.new(TEST_KEY, DjbCrypto::Salsa2020)
-msg20 = box20.decrypt(box20.encrypt(SMALL_MSG))
+box20 = DjbCrypto::SecretBox.new(TEST_KEY, DjbCrypto::Salsa2020)
+msg20 = box20.open(box20.box(SMALL_MSG))
 msg20 == SMALL_MSG or raise "Salsa20/20 broken"
 
-box12 = DjbCrypto::Box.new(TEST_KEY, DjbCrypto::Salsa2012)
-msg12 = box12.decrypt(box12.encrypt(SMALL_MSG))
+box12 = DjbCrypto::SecretBox.new(TEST_KEY, DjbCrypto::Salsa2012)
+msg12 = box12.open(box12.box(SMALL_MSG))
 msg12 == SMALL_MSG or raise "Salsa20/12 broken"
 
-box8 = DjbCrypto::Box.new(TEST_KEY, DjbCrypto::Salsa208)
+box8 = DjbCrypto::SecretBox.new(TEST_KEY, DjbCrypto::Salsa208)
 msg8 = box8.decrypt(box8.encrypt(SMALL_MSG))
 msg8 == SMALL_MSG or raise "Salsa20/8 broken"
 
 # XSalsa20
-boxx20 = DjbCrypto::Box.new(TEST_KEY, DjbCrypto::XSalsa2020)
+boxx20 = DjbCrypto::SecretBox.new(TEST_KEY, DjbCrypto::XSalsa2020)
 msgx20 = boxx20.decrypt(boxx20.encrypt(SMALL_MSG))
 msgx20 == SMALL_MSG or raise "XSalsa20/20 broken"
 
-boxx12 = DjbCrypto::Box.new(TEST_KEY, DjbCrypto::XSalsa2012)
+boxx12 = DjbCrypto::SecretBox.new(TEST_KEY, DjbCrypto::XSalsa2012)
 msgx12 = boxx12.decrypt(boxx12.encrypt(SMALL_MSG))
 msgx12 == SMALL_MSG or raise "XSalsa20/12 broken"
 
-boxx8 = DjbCrypto::Box.new(TEST_KEY, DjbCrypto::XSalsa208)
+boxx8 = DjbCrypto::SecretBox.new(TEST_KEY, DjbCrypto::XSalsa208)
 msgx8 = boxx8.decrypt(boxx8.encrypt(SMALL_MSG))
 msgx8 == SMALL_MSG or raise "XSalsa20/8 broken"
 
 # ChaCha
-boxcha20 = DjbCrypto::Box.new(TEST_KEY, DjbCrypto::ChaCha20)
+boxcha20 = DjbCrypto::SecretBox.new(TEST_KEY, DjbCrypto::ChaCha20)
 msgcha20 = boxcha20.decrypt(boxcha20.encrypt(SMALL_MSG))
 msgcha20 == SMALL_MSG or raise "ChaCha20 broken"
 
-boxcha12 = DjbCrypto::Box.new(TEST_KEY, DjbCrypto::ChaCha12)
+boxcha12 = DjbCrypto::SecretBox.new(TEST_KEY, DjbCrypto::ChaCha12)
 msgcha12 = boxcha12.decrypt(boxcha12.encrypt(SMALL_MSG))
 msgcha12 == SMALL_MSG or raise "ChaCha12 broken"
 
-boxcha8 = DjbCrypto::Box.new(TEST_KEY, DjbCrypto::ChaCha8)
+boxcha8 = DjbCrypto::SecretBox.new(TEST_KEY, DjbCrypto::ChaCha8)
 msgcha8 = boxcha8.decrypt(boxcha8.encrypt(SMALL_MSG))
 msgcha8 == SMALL_MSG or raise "ChaCha8 broken"
 
