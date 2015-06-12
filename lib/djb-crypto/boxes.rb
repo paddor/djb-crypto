@@ -1,6 +1,7 @@
 module DjbCrypto
   class Stream
-    MAX = 2**64 - 1 # only first 2^64 blocks of the stream are usable
+    # number of usable blocks
+    MAX = 2**64 - 1
 
     def initialize(hash_class, key, nonce)
       @hasher = hash_class.new(key, nonce)
