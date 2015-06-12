@@ -7,19 +7,21 @@ module DjbCrypto
       @hasher = hash_class.new(key, nonce)
       @enumerator = Enumerator.new(MAX) do |stream|
         0.upto(MAX) do |counter|
-          stream << @hasher.block(counter)
+          @hasher.block(counter).each_byte { |b| stream << b }
         end
       end
     end
 
-    def next_block
-      @enumerator.next
+    # Gets the given number of bytes in the key stream.
+    # @return [Array<Integer>] next n bytes of key stream
+    def next_bytes(n)
+      (0...n).map { @enumerator.next }
     end
 
-    def next_bytes(n)
-      bytes = ""
-      bytes << next_block while bytes.bytesize < n
-      return bytes.byteslice(0, n)
+    # @param msg [String] message to XOR
+    # @return [String] result of XOR-ing
+    def xor(msg)
+      msg.unpack("C*").map { |m_byte| m_byte ^ @enumerator.next }.pack("C*")
     end
   end
 
@@ -33,26 +35,20 @@ module DjbCrypto
       raise "unsupported key size" if key.bytesize != key_size
     end
 
-    def encrypt(msg, nonce=random_nonce)
-      cipher_text = crypt(msg, new_stream(nonce))
+    def box(plain_text, nonce=random_nonce)
+      cipher_text = new_stream(nonce).xor(plain_text)
       "#{nonce}#{cipher_text}"
     end
+    alias_method :encrypt, :box
 
-    def decrypt(msg)
-      nonce = msg.byteslice(0, nonce_size)
-      msg = msg.byteslice(nonce_size..-1)
-      crypt(msg, new_stream(nonce))
+    def open(boxed_msg)
+      nonce = boxed_msg.byteslice(0, nonce_size)
+      cipher_text = boxed_msg.byteslice(nonce_size..-1)
+      new_stream(nonce).xor(cipher_text)
     end
+    alias_method :decrypt, :open
 
     private
-
-    def crypt(msg, cipher_stream)
-      msg.bytes.each_slice(64).map do |msg_block|
-        cipher_block = cipher_stream.next_block.bytes
-        msg_block.zip(cipher_block).map { |m,c| m ^ c }
-      end.flatten.
-      pack("C*")
-    end
 
     def new_stream(nonce)
       Stream.new(@hash_class, @key, nonce)
@@ -81,7 +77,7 @@ module DjbCrypto
       super(random_key, Salsa2020)
     end
 
-    def encrypt(msg)
+    def box(msg)
       super(msg)
     end
   end
