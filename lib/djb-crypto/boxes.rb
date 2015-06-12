@@ -30,7 +30,7 @@ module DjbCrypto
     def initialize(key=random_key, hash_class=Salsa2020)
       @key = key
       @hash_class = hash_class
-      raise "unsupported key length" if key.bytesize != key_size
+      raise "unsupported key size" if key.bytesize != key_size
     end
 
     def encrypt(msg, nonce=random_nonce)
