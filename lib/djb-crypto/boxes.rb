@@ -20,7 +20,7 @@ module DjbCrypto
 
     # @param msg [String] message to XOR
     # @return [String] result of XOR-ing
-    def xor(msg)
+    def ^(msg)
       msg.unpack("C*").map { |m_byte| m_byte ^ @enumerator.next }.pack("C*")
     end
   end
@@ -36,7 +36,7 @@ module DjbCrypto
     end
 
     def box(plain_text, nonce=random_nonce)
-      cipher_text = new_stream(nonce).xor(plain_text)
+      cipher_text = new_stream(nonce) ^ plain_text
       "#{nonce}#{cipher_text}"
     end
     alias_method :encrypt, :box
@@ -44,7 +44,7 @@ module DjbCrypto
     def open(boxed_msg)
       nonce = boxed_msg.byteslice(0, nonce_size)
       cipher_text = boxed_msg.byteslice(nonce_size..-1)
-      new_stream(nonce).xor(cipher_text)
+      new_stream(nonce) ^ cipher_text
     end
     alias_method :decrypt, :open
 
