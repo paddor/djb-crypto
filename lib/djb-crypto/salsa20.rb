@@ -33,8 +33,7 @@ module DjbCrypto
   # 0xb1c7f1fa, 0x62066edc, 0xe035fa23, 0xc4496f04,
   # 0x2131e6b3, 0x810bde28, 0xf62cb407, 0x6bdede3d.
   class Salsa20Core
-    WORD_WIDTH = 32 # bits
-    WORD = 2**WORD_WIDTH - 1 # used to truncate bits
+    WORD = 0xffff_ffff # used to truncate bits
 
     # Salsa constant for 32-byte keys
     SALSA_CONST32 = [0x61707865, 0x3320646e, 0x79622d32, 0x6b206574].freeze
@@ -100,7 +99,7 @@ module DjbCrypto
       k0, k1, k2, k3, k4, k5, k6, k7 = @key_words
       *, n0, n1 = @nonce_words
       c0, c1, c2, c3 = @constant
-      b0, b1 = count & WORD, (count >> WORD_WIDTH) & WORD # block counter words
+      b0, b1 = count & WORD, (count >> 32) & WORD # block counter words
       @block = [
         c0, k0, k1, k2,
         k3, c1, n0, n1,
@@ -196,7 +195,7 @@ module DjbCrypto
     # @param n [Integer] rotation distance
     # @result [Integer] rotated word
     def rotate_left(word, n)
-      ((word << n) | (word >> (WORD_WIDTH - n))) & WORD
+      ((word << n) | (word >> (32 - n))) & WORD
     end
   end
 

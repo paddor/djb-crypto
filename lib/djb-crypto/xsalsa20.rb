@@ -41,7 +41,7 @@ module DjbCrypto
       k0, k1, k2, k3, k4, k5, k6, k7 = @cascade_key
       *, n4, n5 = @nonce_words
       c0, c1, c2, c3 = @constant
-      b0, b1 = count & WORD, (count >> WORD_WIDTH) & WORD # block counter words
+      b0, b1 = count & WORD, (count >> 32) & WORD # block counter words
       @block = [
         c0, k0, k1, k2,
         k3, c1, n4, n5,
