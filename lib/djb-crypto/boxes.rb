@@ -7,7 +7,7 @@ module DjbCrypto
       @hasher = hash_class.new(key, nonce)
       @enumerator = Enumerator.new(MAX) do |stream|
         0.upto(MAX) do |counter|
-          @hasher.block(counter).each_byte { |byte| stream << byte }
+          @hasher.block(counter).each { |word| stream << word }
         end
       end
     end
@@ -15,13 +15,31 @@ module DjbCrypto
     # Gets the given number of bytes in the key stream.
     # @return [Array<Integer>] next n bytes of key stream
     def next_bytes(n)
-      (0...n).map { @enumerator.next }
+      # whole words
+      bytes = (0...n/4).map{ @enumerator.next }.flatten.pack("V*").unpack("C*")
+
+      # remaining bytes
+      if (remaining = n % 4) != 0
+        bytes << @enumerator.next.pack("V").byteslice(0, remaining).unpack("C*")
+      end
+
+      return bytes
     end
 
     # @param msg [String] message to XOR
     # @return [String] result of XOR-ing
     def ^(msg)
-      msg.unpack("C*").map { |m_byte| m_byte ^ @enumerator.next }.pack("C*")
+      # whole words (4 bytes each)
+      x = msg.unpack("V*").map { |mb| mb ^ @enumerator.next }.pack("V*")
+
+      # remaining bytes
+      if (remaining = msg.bytesize % 4) != 0
+        kstream_bytes = @enumerator.next.pack("V").unpack("C*")
+        msg_bytes = msg.byteslice(-remaining .. -1).unpack("C*")
+        x << msg_bytes.zip(kstream_bytes).map { |m,k| m ^ k }.pack("C*")
+      end
+
+      return x
     end
   end
 

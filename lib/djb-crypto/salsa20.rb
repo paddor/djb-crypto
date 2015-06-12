@@ -61,10 +61,10 @@ module DjbCrypto
 
     # Returns an output block.
     # @param count [Integer] block number
-    # @return [String] output block
+    # @return [Array<Integer>] output block
     def block(count)
       new_input_block(count)
-      hash.pack("V*")
+      hash
     end
 
     # @abstract
