@@ -92,3 +92,20 @@ ChaChaVectors.each do |v|
   puts "-" * 50
 end
 
+
+puts
+puts "Poly1305 tests"
+puts "=============="
+KEY = "85:d6:be:78:57:55:6d:33:7f:44:52:fe:42:d5:06:a8:01:0"\
+       "3:80:8a:fb:0d:b2:fd:4a:bf:f6:af:41:49:f5:1b"
+BIN_KEY = [KEY.gsub(":", "")].pack("H*")
+MSG = "Cryptographic Forum Research Group"
+TAG = "a8:06:1d:c1:30:51:36:c6:c2:2b:8b:af:0c:01:27:a9"
+BIN_TAG = [TAG.gsub(":", "")].pack("H*")
+
+p = DjbCrypto::Poly1305.new(BIN_KEY, MSG)
+if p.tag == BIN_TAG
+  puts "tag correct"
+else
+  puts "tag NOT correct"
+end
