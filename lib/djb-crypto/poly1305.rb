@@ -1,6 +1,7 @@
 require 'securerandom'
 
 module DjbCrypto
+  # Used to generate a message authenticator.
   class Poly1305
     KEY_SIZE = 32 # bytes
     P = 2**130-5
