@@ -53,15 +53,12 @@ module DjbCrypto
       raise "unsupported key size" if key.bytesize != key_size
     end
 
-    def box(plain_text, nonce=random_nonce)
-      cipher_text = new_stream(nonce) ^ plain_text
-      "#{nonce}#{cipher_text}"
+    def box(nonce, plain_text)
+      new_stream(nonce) ^ plain_text
     end
     alias_method :encrypt, :box
 
-    def open(boxed_msg)
-      nonce = boxed_msg.byteslice(0, nonce_size)
-      cipher_text = boxed_msg.byteslice(nonce_size..-1)
+    def open(nonce, cipher_text)
       new_stream(nonce) ^ cipher_text
     end
     alias_method :decrypt, :open
@@ -76,10 +73,6 @@ module DjbCrypto
       SecureRandom.random_bytes(key_size)
     end
 
-    def random_nonce
-      SecureRandom.random_bytes(nonce_size)
-    end
-
     def key_size
       @key_size ||= @hash_class.key_size
     end
@@ -91,12 +84,28 @@ module DjbCrypto
 
   # Provides sane defaults for users who have no croptography knowledge.
   class SimpleBox < SecretBox
+    # Uses XSalsa20 as encryption algorithm, because we have to use random
+    # nonces. Thanks to the large nonce size of XSalsa20, that's safe.
     def initialize
-      super(random_key, Salsa2020)
+      super(random_key, XSalsa2020)
     end
 
     def box(msg)
-      super(msg)
+      nonce = random_nonce
+      cipher_text = super(nonce, msg)
+      "#{nonce}#{cipher_text}"
+    end
+
+    def open(boxed_msg)
+      nonce = boxed_msg.byteslice(0, nonce_size)
+      cipher_text = boxed_msg.byteslice(nonce_size..-1)
+      super(nonce, cipher_text)
+    end
+
+    private
+
+    def random_nonce
+      SecureRandom.random_bytes(nonce_size)
     end
   end
 end
