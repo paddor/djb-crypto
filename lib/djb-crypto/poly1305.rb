@@ -1,6 +1,32 @@
 require 'securerandom'
 
 module DjbCrypto
+  class MAC
+    def initialize(stream, aad, cipher_text)
+      @key = stream.first_bytes(32).pack("C*")
+      @aad = aad
+      @cipher_text = cipher_text
+    end
+
+    def tag
+      Poly1305.new(@key, mac_data).tag
+    end
+
+    private
+
+    # MAC data, the input for the Poly1305 function (besides the secret key).
+    # @return [String] MAC data
+    def mac_data
+      s = ""
+      s << @aad
+      s << (?\0 * (s.bytesize % 16))
+      s << @cipher_text
+      s << (?\0 * (s.bytesize % 16))
+      s << [@aad.bytesize].pack("Q<")
+      s << [@cipher_text.bytesize].pack("Q<")
+    end
+  end
+
   # Used to generate a message authenticator.
   #
   # My implementation uses the standard nonce size instead of the 96 bit
@@ -16,15 +42,13 @@ module DjbCrypto
     KEY_SIZE = 32 # bytes
     P = 2**130-5
 
+    attr_reader :tag
+
     def initialize(key, mac_data)
       raise "unsupported key size" if key.bytesize != KEY_SIZE
       @key = key
-      @data = mac_data.to_s
-    end
-
-    # @return [String] MAC tag
-    def tag
-      @tag ||= calculate_tag
+      @data = mac_data
+      @tag = calculate_tag
     end
 
     private
@@ -54,27 +78,6 @@ module DjbCrypto
      r[4]  &= 252
      r[8]  &= 252
      r[12] &= 252
-    end
-
-    # MAC data, the input for the Poly1305 function (besides the secret key).
-    class Data
-      # @param aad [String] additional authenticated data
-      # @param cipher_text [String] cipher text
-      def initialize(aad, cipher_text)
-        @aad = aad
-        @cipher_text = cipher_text
-      end
-
-      # @return [String] message used by Poly1305
-      def to_s
-        s = ""
-        s << @aad
-        s << (?\0 * (s.bytesize % 16))
-        s << @cipher_text
-        s << (?\0 * (s.bytesize % 16))
-        s << [@aad.bytesize].pack("Q<")
-        s << [@cipher_text.bytesize].pack("Q<")
-      end
     end
   end
 end

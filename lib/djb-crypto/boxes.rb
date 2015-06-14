@@ -89,7 +89,7 @@ module DjbCrypto
       stream = new_stream(nonce)
       mac_key = stream.first_bytes(32).pack("C*")
       cipher_text = stream ^ plain_text
-      mac = Poly1305.new(mac_key, Poly1305::Data.new(aad, cipher_text))
+      mac = MAC.new(stream, aad, cipher_text)
       "#{cipher_text}#{mac.tag}"
     end
     alias_method :encrypt, :box
@@ -104,8 +104,7 @@ module DjbCrypto
       tag_is = cipher_text.byteslice(-16..-1)
       cipher_text = cipher_text.byteslice(0..-17)
       stream = new_stream(nonce)
-      mac_key = stream.first_bytes(32).pack("C*")
-      mac_should = Poly1305.new(mac_key, Poly1305::Data.new(aad, cipher_text))
+      mac_should = MAC.new(stream, aad, cipher_text)
       tag_should = mac_should.tag
 
       raise "authenticator mismatch" if tag_should != tag_is
