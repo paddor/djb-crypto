@@ -80,8 +80,8 @@ ChaChaVectors.each do |v|
   key, nonce = v[:KEY].hex2bin, v[:NONCE].hex2bin
   kstream = v[:KEYSTREAM].hex2bin
 
-  stream = DjbCrypto::Stream.new(DjbCrypto::ChaCha20, key, nonce)
-  kstream_is = stream.next_bytes(kstream.bytesize).pack("C*")
+  stream = DjbCrypto::Stream.new(DjbCrypto::ChaCha20.new(key, nonce))
+  kstream_is = stream.first_bytes(kstream.bytesize).pack("C*")
   if kstream_is == kstream
     puts "matched"
   else
@@ -105,7 +105,39 @@ BIN_TAG = [TAG.gsub(":", "")].pack("H*")
 
 p = DjbCrypto::Poly1305.new(BIN_KEY, MSG)
 if p.tag == BIN_TAG
-  puts "tag correct"
+  puts "Poly1305 works"
 else
-  puts "tag NOT correct"
+  puts "Poly1305 is broken"
+end
+
+
+
+
+# taken from http://tools.ietf.org/html/rfc7539#section-2.8.2
+#
+# As my implementation doesn't use a 96 bit nonce, but rather the standard
+# size nonce of 64 bit, I ignored the constant.
+plain_text = "Ladies and Gentlemen of the class of '99: If I could offer "\
+             "you only one tip for the future, sunscreen would be it."
+aad = ["50 51 52 53 c0 c1 c2 c3 c4 c5 c6 c7".gsub(" ", "")].pack("H*")
+key = "80 81 82 83 84 85 86 87 88 89 8a 8b 8c 8d 8e 8f"\
+      "90 91 92 93 94 95 96 97 98 99 9a 9b 9c 9d 9e 9f"
+bin_key = [key.gsub(" ", "")].pack("H*")
+nonce = ["40 41 42 43 44 45 46 47".gsub(" ", "")].pack("H*")
+
+puts "plain_text.size: #{plain_text.size}"
+b = DjbCrypto::SecretBox.new(bin_key, DjbCrypto::ChaCha20)
+ct = b.box(nonce, plain_text, aad)
+puts "cipher_text.size: #{ct.size}"
+
+if plain_text != b.open(nonce, ct, aad)
+  puts "SecretBox broken"
+end
+
+begin
+  b.open(nonce, ct+"a", aad)
+rescue
+  puts "got exception (#{$!.message}), which is good"
+else
+  puts "SecretBox failed to recognize message tampering"
 end
