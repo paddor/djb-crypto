@@ -87,7 +87,6 @@ module DjbCrypto
     # @return [String] the cipher text with the authenticator tag appended
     def box(nonce, plain_text, aad = "")
       stream = new_stream(nonce)
-      mac_key = stream.first_bytes(32).pack("C*")
       cipher_text = stream ^ plain_text
       mac = MAC.new(stream, aad, cipher_text)
       "#{cipher_text}#{mac.tag}"
