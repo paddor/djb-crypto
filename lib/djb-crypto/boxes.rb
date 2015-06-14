@@ -13,9 +13,13 @@ module DjbCrypto
 
     attr_reader :key
 
-    def initialize(key=random_key, cipher_class=Salsa2020)
+    # @param key [String] secret encryption key
+    # @param cipher_class [Class] cipher class used for encryption
+    # @param mac_class [Class] MAC class used for message authentication
+    def initialize(key=random_key, cipher_class=Salsa2020, mac_class=Poly1305)
       @key = key
       @cipher_class = cipher_class
+      @mac_class = mac_class
       raise "unsupported key size" if key.bytesize != key_size
     end
 
@@ -27,7 +31,7 @@ module DjbCrypto
     def box(nonce, plain_text, aad = "")
       stream = @cipher_class.new(@key, nonce)
       cipher_text = stream ^ plain_text
-      mac = MAC.new(stream, aad, cipher_text)
+      mac = @mac_class.new(stream, aad, cipher_text)
       "#{cipher_text}#{mac.tag}"
     end
     alias_method :encrypt, :box
@@ -42,8 +46,7 @@ module DjbCrypto
       tag_is = cipher_text.byteslice(-16..-1)
       cipher_text = cipher_text.byteslice(0..-17)
       stream = @cipher_class.new(@key, nonce)
-      mac_should = MAC.new(stream, aad, cipher_text)
-      tag_should = mac_should.tag
+      tag_should = @mac_class.new(stream, aad, cipher_text).tag
 
       raise "authenticator mismatch" if tag_should != tag_is
       return plain_text = stream ^ cipher_text

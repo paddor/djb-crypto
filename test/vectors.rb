@@ -103,8 +103,8 @@ MSG = "Cryptographic Forum Research Group"
 TAG = "a8:06:1d:c1:30:51:36:c6:c2:2b:8b:af:0c:01:27:a9"
 BIN_TAG = [TAG.gsub(":", "")].pack("H*")
 
-p = DjbCrypto::Poly1305.new(BIN_KEY, MSG)
-if p.tag == BIN_TAG
+tag = DjbCrypto::Poly1305.tag(BIN_KEY, MSG)
+if tag == BIN_TAG
   puts "Poly1305 works"
 else
   puts "Poly1305 is broken"
