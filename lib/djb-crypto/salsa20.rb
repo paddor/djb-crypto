@@ -193,7 +193,7 @@ module DjbCrypto
     # Rotates the bits of a word to the left.
     # @param word [Integer] word
     # @param n [Integer] rotation distance
-    # @result [Integer] rotated word
+    # @return [Integer] rotated word
     def rotate_left(word, n)
       ((word << n) | (word >> (32 - n))) & WORD
     end
