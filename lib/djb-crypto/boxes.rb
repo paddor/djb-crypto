@@ -4,9 +4,14 @@ module DjbCrypto
 
   # Used for secret key encryption.
   #
+  # This box provides functionality for AEAD using one of the stream ciphers
+  # and {Poly1305} as the MAC.
+  #
   # To use this box, you have to have your own nonce strategy. Unless you're
   # using XSalsa20, it's not considered safe to use randomly generated nonces.
   # If unsure about how to safely generate nonces, just use SimpleBox.
+  #
+  # @see https://en.wikipedia.org/wiki/Authenticated_encryption
   class SecretBox
     extend Forwardable
     def_delegators :@cipher_class, :key_size, :nonce_size

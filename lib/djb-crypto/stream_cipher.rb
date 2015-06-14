@@ -1,4 +1,5 @@
 module DjbCrypto
+  # Common functionality for all stream ciphers.
   class StreamCipher
 
     # counter of the last usable block

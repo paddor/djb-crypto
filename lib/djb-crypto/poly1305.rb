@@ -13,6 +13,7 @@ module DjbCrypto
   # interested in the general techniques involved in the generation of AEAD.
   #
   # @see http://tools.ietf.org/html/rfc7539#section-2.5
+  # @see https://en.wikipedia.org/wiki/Authenticated_encryption
   class Poly1305
     # MAC key size in bytes
     KEY_SIZE = 32
