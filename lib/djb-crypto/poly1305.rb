@@ -14,7 +14,10 @@ module DjbCrypto
   #
   # @see http://tools.ietf.org/html/rfc7539#section-2.5
   class Poly1305
-    KEY_SIZE = 32 # bytes
+    # MAC key size in bytes
+    KEY_SIZE = 32
+
+    # the prime number used by the {::poly1305} function
     P = 2**130-5
 
     class << self
@@ -74,7 +77,7 @@ module DjbCrypto
       @stream.first_bytes(KEY_SIZE).pack("C*")
     end
 
-    # MAC data, the input for the Poly1305 function (besides the secret key).
+    # MAC data, the input for the {::poly1305} function (besides the secret key).
     # @return [String] MAC data
     def mac_data
       s = ""
