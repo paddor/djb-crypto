@@ -1,3 +1,5 @@
+require 'forwardable'
+
 module DjbCrypto
   class Stream
     # number of usable blocks
@@ -45,6 +47,9 @@ module DjbCrypto
 
   # Used for secret key encryption.
   class SecretBox
+    extend Forwardable
+    def_delegators :@hash_class, :key_size, :nonce_size
+
     attr_reader :key
 
     def initialize(key=random_key, hash_class=Salsa2020)
@@ -71,14 +76,6 @@ module DjbCrypto
 
     def random_key
       SecureRandom.random_bytes(key_size)
-    end
-
-    def key_size
-      @key_size ||= @hash_class.key_size
-    end
-
-    def nonce_size
-      @nonce_size ||= @hash_class.nonce_size
     end
   end
 
