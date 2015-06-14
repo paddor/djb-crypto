@@ -2,67 +2,6 @@ require 'forwardable'
 
 module DjbCrypto
 
-  # Used internally to generate the keystream and XOR it with the
-  # plaintext or ciphertext.
-  class Stream
-
-    # counter of the last usable block
-    MAX = 2**64 - 1
-
-    def initialize(hasher)
-      @hasher = hasher
-    end
-
-    # Gets the first n bytes in the key stream.
-    # @return [Array<Integer>] next n bytes of key stream
-    def first_bytes(n)
-      raise "keystream wrap-around" if n/4 + (n%4==0 ? 0 : 1) > MAX
-      stream = stream_enumerator
-
-      # whole words
-      bytes = (n/4).times.map{ stream.next }.pack("V*").unpack("C*")
-
-      # remaining bytes
-      if (remaining = n % 4) != 0
-        bytes << stream.next.pack("V").byteslice(0, remaining).unpack("C*")
-      end
-
-      return bytes
-    end
-
-    # we start XOR-ing at block 1 (not 0) because the very first block is used for key
-    # generation for the authenticator
-    XOR_OFFSET = 1
-
-    # @param msg [String] message to XOR
-    # @return [String] result of XOR-ing
-    def ^(msg)
-      stream = stream_enumerator(XOR_OFFSET)
-
-      # whole words (4 bytes each)
-      x = msg.unpack("V*").map { |mb| mb ^ stream.next }.pack("V*")
-
-      # remaining bytes
-      if (remaining = msg.bytesize % 4) != 0
-        kstream_bytes = [stream.next].pack("V").unpack("C*")
-        msg_bytes = msg.byteslice(-remaining .. -1).unpack("C*")
-        x << msg_bytes.zip(kstream_bytes).map { |m,k| m ^ k }.pack("C*")
-      end
-
-      return x
-    end
-
-    private
-
-    def stream_enumerator(offset = 0)
-      Enumerator.new(MAX) do |stream|
-        offset.upto(MAX) do |counter|
-          @hasher.block(counter).each { |word| stream << word }
-        end
-      end
-    end
-  end
-
   # Used for secret key encryption.
   #
   # To use this box, you have to have your own nonce strategy. Unless you're
@@ -70,13 +9,13 @@ module DjbCrypto
   # If unsure about how to safely generate nonces, just use SimpleBox.
   class SecretBox
     extend Forwardable
-    def_delegators :@hash_class, :key_size, :nonce_size
+    def_delegators :@cipher_class, :key_size, :nonce_size
 
     attr_reader :key
 
-    def initialize(key=random_key, hash_class=Salsa2020)
+    def initialize(key=random_key, cipher_class=Salsa2020)
       @key = key
-      @hash_class = hash_class
+      @cipher_class = cipher_class
       raise "unsupported key size" if key.bytesize != key_size
     end
 
@@ -86,7 +25,7 @@ module DjbCrypto
     # @param aad [String] additional authenticated data
     # @return [String] the cipher text with the authenticator tag appended
     def box(nonce, plain_text, aad = "")
-      stream = new_stream(nonce)
+      stream = @cipher_class.new(@key, nonce)
       cipher_text = stream ^ plain_text
       mac = MAC.new(stream, aad, cipher_text)
       "#{cipher_text}#{mac.tag}"
@@ -102,7 +41,7 @@ module DjbCrypto
     def open(nonce, cipher_text, aad = "")
       tag_is = cipher_text.byteslice(-16..-1)
       cipher_text = cipher_text.byteslice(0..-17)
-      stream = new_stream(nonce)
+      stream = @cipher_class.new(@key, nonce)
       mac_should = MAC.new(stream, aad, cipher_text)
       tag_should = mac_should.tag
 
@@ -112,11 +51,6 @@ module DjbCrypto
     alias_method :decrypt, :open
 
     private
-
-    def new_stream(nonce)
-      hasher = @hash_class.new(@key, nonce)
-      Stream.new(hasher)
-    end
 
     def random_key
       SecureRandom.random_bytes(key_size)

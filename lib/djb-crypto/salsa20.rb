@@ -32,7 +32,7 @@ module DjbCrypto
   # 0x798942d4, 0x26107016, 0x64edb1a4, 0x2d27173f,
   # 0xb1c7f1fa, 0x62066edc, 0xe035fa23, 0xc4496f04,
   # 0x2131e6b3, 0x810bde28, 0xf62cb407, 0x6bdede3d.
-  class Salsa20Core
+  class Salsa20Core < StreamCipher
     WORD = 0xffff_ffff # used to truncate bits
 
     # Salsa constant for 32-byte keys

@@ -9,6 +9,7 @@ require 'securerandom'
 module DjbCrypto
 end
 
+require_relative 'djb-crypto/stream_cipher'
 require_relative 'djb-crypto/salsa20'
 require_relative 'djb-crypto/xsalsa20'
 require_relative 'djb-crypto/chacha'
