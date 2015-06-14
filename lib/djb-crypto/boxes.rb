@@ -1,6 +1,9 @@
 require 'forwardable'
 
 module DjbCrypto
+
+  # Used internally to generate the keystream and XOR it with the
+  # plaintext or ciphertext.
   class Stream
     # number of usable blocks
     MAX = 2**64 - 1
@@ -46,6 +49,10 @@ module DjbCrypto
   end
 
   # Used for secret key encryption.
+  #
+  # To use this box, you have to have your own nonce strategy. Unless you're
+  # using XSalsa20, it's not considered safe to use randomly generated nonces.
+  # If unsure about how to safely generate nonces, just use SimpleBox.
   class SecretBox
     extend Forwardable
     def_delegators :@hash_class, :key_size, :nonce_size
@@ -80,9 +87,13 @@ module DjbCrypto
   end
 
   # Provides sane defaults for users who have no croptography knowledge.
+  #
+  # Uses XSalsa20 as encryption algorithm, because we have to use random
+  # nonces. Thanks to the large nonce size of XSalsa20, that's safe.
+  #
+  # {#box} prepends the nonce to the ciphertext. {#open} extracts it before
+  # decrypting.
   class SimpleBox < SecretBox
-    # Uses XSalsa20 as encryption algorithm, because we have to use random
-    # nonces. Thanks to the large nonce size of XSalsa20, that's safe.
     def initialize
       super(random_key, XSalsa2020)
     end
