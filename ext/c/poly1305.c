@@ -1,7 +1,7 @@
 #include "poly1305.h"
 
 // from http://cr.yp.to/mac/poly1305_gmp.c
-void poly1305_tag(
+void poly1305(
     const uint8_t r[16],
     const uint8_t s[16],
     size_t l,
@@ -38,4 +38,67 @@ void poly1305_tag(
   mpz_clear(c);
   mpz_clear(h);
   mpz_clear(rbar);
+}
+
+void poly1305_tag(
+    const uint8_t key[32],
+    const uint64_t aad_len,
+    const uint8_t *aad,
+    const uint64_t ct_len,
+    const uint8_t *ct,
+    uint8_t tag[16]) {
+
+  uint8_t *md;
+  size_t md_len = 0;
+  size_t i = 0;
+  int pad1, pad2;
+
+  // allocate MAC data memory
+  md_len += aad_len;
+  pad1 = md_len % 16;
+  md_len += pad1;
+  md_len += ct_len;
+  pad2 = md_len % 16;
+  md_len += pad2;
+  md_len += 16; // two uint64_t
+  md = malloc(md_len * sizeof(uint8_t));
+
+  // AAD
+  memcpy(&md[i], aad, aad_len);
+  i += aad_len;
+
+  // first padding
+  memset(&md[i], 0, pad1);
+  i += pad1;
+
+  // CT
+  memcpy(&md[i], ct, ct_len);
+  i += ct_len;
+
+  // second padding
+  memset(&md[i], 0, pad2);
+  i += pad2;
+
+  // AAD size as LE
+  md[i++] = aad_len >> 56;
+  md[i++] = aad_len >> 48;
+  md[i++] = aad_len >> 40;
+  md[i++] = aad_len >> 32;
+  md[i++] = aad_len >> 24;
+  md[i++] = aad_len >> 16;
+  md[i++] = aad_len >>  8;
+  md[i++] = aad_len >>  0;
+
+  // CT size
+  md[i++] = ct_len >> 56;
+  md[i++] = ct_len >> 48;
+  md[i++] = ct_len >> 40;
+  md[i++] = ct_len >> 32;
+  md[i++] = ct_len >> 24;
+  md[i++] = ct_len >> 16;
+  md[i++] = ct_len >>  8;
+  md[i++] = ct_len >>  0;
+
+  // calculate tag
+  poly1305(&key[0], &key[16], md_len, md, tag);
 }

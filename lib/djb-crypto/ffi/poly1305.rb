@@ -6,14 +6,14 @@ module DjbCrypto::FFI
   # @see https://en.wikipedia.org/wiki/Authenticated_encryption
   class Poly1305
     # MAC key size in bytes
-    KEY_SIZE = 32
+    KEY_BYTES = 32
 
     module C
       extend FFI::Library
       ffi_lib File.expand_path("../../../ext/c/poly1305.dylib",
                                File.dirname(__FILE__))
       attach_function :poly1305_tag,
-        [:pointer, :pointer, :size_t, :pointer, :pointer], :void
+        [:pointer, :uint64, :pointer, :uint64, :pointer, :pointer], :void
     end
 
     # @param key_stream [StreamCipher] key stream used to generate the key
@@ -21,7 +21,7 @@ module DjbCrypto::FFI
     # @param aad [String] additional authenticated data
     # @param cipher_text [String] cipher text of the message
     def initialize(key_stream, aad, cipher_text)
-      @stream = key_stream
+      @key = key_stream.first_bytes(KEY_BYTES)
       @aad = aad
       @cipher_text = cipher_text
     end
@@ -34,31 +34,15 @@ module DjbCrypto::FFI
     private
 
     def calculate_tag
-      key = @stream.first_bytes(KEY_SIZE) # one-time key
-      r = key.byteslice(0, KEY_SIZE/2)
-      s = key.byteslice(KEY_SIZE/2, KEY_SIZE/2)
-
-      c_r = FFI::MemoryPointer.from_string(r)
-      c_s = FFI::MemoryPointer.from_string(s)
-
-      mac_data = mac_data()
-      c_mac_data = FFI::MemoryPointer.from_string(mac_data)
-
+      c_key = FFI::MemoryPointer.from_string(@key)
+      c_aad = FFI::MemoryPointer.from_string(@aad)
+      aad_len = @aad.bytesize
+      c_ct = FFI::MemoryPointer.from_string(@cipher_text)
+      ct_len = @cipher_text.bytesize
       c_tag = FFI::MemoryPointer.new(:uint8, 16)
-      C.poly1305_tag(c_r, c_s, mac_data.bytesize, c_mac_data, c_tag)
-      c_tag.read_string(16)
-    end
 
-    # MAC data, the input for the {::poly1305} function (besides the secret key).
-    # @return [String] MAC data
-    def mac_data
-      s = ""
-      s << @aad
-      s << (?\0 * (s.bytesize % 16))
-      s << @cipher_text
-      s << (?\0 * (s.bytesize % 16))
-      s << [@aad.bytesize].pack("Q<")
-      s << [@cipher_text.bytesize].pack("Q<")
+      C.poly1305_tag(c_key, aad_len, c_aad, ct_len, c_ct, c_tag)
+      c_tag.read_string(16)
     end
   end
 end
