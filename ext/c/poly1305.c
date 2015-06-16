@@ -1661,7 +1661,7 @@ void poly1305_tag(
   md[i++] = aad_len >>  8;
   md[i++] = aad_len >>  0;
 
-  // CT size
+  // CT size as LE
   md[i++] = ct_len >> 56;
   md[i++] = ct_len >> 48;
   md[i++] = ct_len >> 40;
