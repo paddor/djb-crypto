@@ -1,5 +1,6 @@
 #include "salsa20.h"
 
+// from http://cr.yp.to/salsa20.html
 #define R(a,b) (((a) << (b)) | ((a) >> (32 - (b))))
 void salsa20_hash_block(uint8_t num_rounds, uint64_t counter,
 		uint32_t in[16], uint32_t out[16]) {
