@@ -62,7 +62,7 @@ module DjbCrypto
     # @param count [Integer] block number
     # @return [Array<Integer>] output block
     def block(count)
-      new_input_block(count)
+      @block = new_input_block(count)
       hash
     end
 
@@ -100,7 +100,7 @@ module DjbCrypto
       *, n0, n1 = @nonce_words
       c0, c1, c2, c3 = @constant
       b0, b1 = count & WORD, (count >> 32) & WORD # block counter words
-      @block = [
+      [
         c0, k0, k1, k2,
         k3, c1, n0, n1,
         b0, b1, c2, k4,

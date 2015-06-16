@@ -10,7 +10,7 @@ module DjbCrypto
       n0, n1 = @nonce_words
       c0, c1, c2, c3 = @constant
       b0, b1 = count & WORD, (count >> 32) & WORD # block counter words
-      @block = [
+      [
         c0, c1, c2, c3,
         k0, k1, k2, k3,
         k4, k5, k6, k7,
