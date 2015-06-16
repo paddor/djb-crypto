@@ -46,6 +46,22 @@ xmsg == SMALL_MSG or raise "Salsa20<->FFI::Salsa20/20 interoperability broken"
 xmsg = box20.open(nonce, fbox20.box(nonce, SMALL_MSG))
 xmsg == SMALL_MSG or raise "Salsa20<->FFI::Salsa20/20 interoperability broken"
 
+# FFI::Salsa20 + FFI::Poly1305
+ffbox20 = DjbCrypto::SecretBox.new(TEST_KEY, DjbCrypto::FFI::Salsa2020, DjbCrypto::FFI::Poly1305)
+nonce = SecureRandom.random_bytes(8)
+msg20 = ffbox20.open(nonce, ffbox20.box(nonce, SMALL_MSG))
+msg20 == SMALL_MSG or raise "FFI::Salsa20/20+FFI::Poly1305 broken"
+
+ffbox12 = DjbCrypto::SecretBox.new(TEST_KEY, DjbCrypto::FFI::Salsa2012, DjbCrypto::FFI::Poly1305)
+nonce = SecureRandom.random_bytes(8)
+msg12 = ffbox12.open(nonce, ffbox12.box(nonce, SMALL_MSG))
+msg12 == SMALL_MSG or raise "FFI::Salsa20/12+FFI::Poly1305 broken: message is #{msg12}"
+
+ffbox8 = DjbCrypto::SecretBox.new(TEST_KEY, DjbCrypto::FFI::Salsa208, DjbCrypto::FFI::Poly1305)
+nonce = SecureRandom.random_bytes(8)
+msg8 = ffbox8.open(nonce, ffbox8.box(nonce, SMALL_MSG))
+msg8 == SMALL_MSG or raise "FFI::Salsa20/8+FFI::Poly1305 broken"
+
 # XSalsa20
 boxx20 = DjbCrypto::SecretBox.new(TEST_KEY, DjbCrypto::XSalsa2020)
 nonce = SecureRandom.random_bytes(24)
@@ -87,6 +103,17 @@ puts "-----------"
 Benchmark.ips do |x|
   nonce8 = SecureRandom.random_bytes(8)
   nonce24 = SecureRandom.random_bytes(24)
+
+  # FFI::Salsa20 + FFI::Poly1305
+  x.report("FFI::Salsa20/20 + FFI::Poly1305") do
+    ffbox20.box(nonce8, SMALL_MSG)
+  end
+  x.report("FFI::Salsa20/12 + FFI::Poly1305") do
+    ffbox12.box(nonce8, SMALL_MSG)
+  end
+  x.report("FFI::Salsa20/8 + FFI::Poly1305") do
+    ffbox8.box(nonce8, SMALL_MSG)
+  end
 
   # FFI::Salsa20
   x.report("FFI::Salsa20/20") do
