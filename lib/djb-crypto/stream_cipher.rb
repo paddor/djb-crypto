@@ -5,18 +5,18 @@ module DjbCrypto
     # counter of the last usable block
     MAX = 2**64 - 1
 
-    # Gets the first n bytes in the key stream.
-    # @return [Array<Integer>] next n bytes of key stream
+    # Gets the first n bytes of the key stream.
+    # @return [String] first n bytes of key stream
     def first_bytes(n)
       raise "keystream wrap-around" if n/4 + (n%4==0 ? 0 : 1) > MAX
       stream = stream_enumerator
 
       # whole words
-      bytes = (n/4).times.map{ stream.next }.pack("V*").unpack("C*")
+      bytes = (n/4).times.map{ stream.next }.pack("V*")
 
       # remaining bytes
       if (remaining = n % 4) != 0
-        bytes << stream.next.pack("V").byteslice(0, remaining).unpack("C*")
+        bytes << stream.next.pack("V").byteslice(0, remaining)
       end
 
       return bytes

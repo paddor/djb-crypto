@@ -81,7 +81,7 @@ ChaChaVectors.each do |v|
   kstream = v[:KEYSTREAM].hex2bin
 
   stream = DjbCrypto::ChaCha20.new(key, nonce)
-  kstream_is = stream.first_bytes(kstream.bytesize).pack("C*")
+  kstream_is = stream.first_bytes(kstream.bytesize)
   if kstream_is == kstream
     puts "matched"
   else

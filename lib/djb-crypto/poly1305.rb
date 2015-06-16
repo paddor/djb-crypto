@@ -78,7 +78,7 @@ module DjbCrypto
     # Generates a one-time key from the first block of the cipher stream.
     # @return [String] one-time key for {::poly1305}
     def key
-      @stream.first_bytes(KEY_SIZE).pack("C*")
+      @stream.first_bytes(KEY_SIZE)
     end
 
     # MAC data, the input for the {::poly1305} function (besides the secret key).
