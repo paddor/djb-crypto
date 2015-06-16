@@ -1673,4 +1673,5 @@ void poly1305_tag(
 
   // calculate tag
   poly1305(&key[0], &key[16], md_len, md, tag);
+  free(md);
 }
