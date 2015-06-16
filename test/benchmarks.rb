@@ -23,7 +23,7 @@ nonce = SecureRandom.random_bytes(8)
 msg8 = box8.open(nonce, box8.box(nonce, SMALL_MSG))
 msg8 == SMALL_MSG or raise "Salsa20/8 broken"
 
-# FFI:Salsa20
+# FFI::Salsa20
 fbox20 = DjbCrypto::SecretBox.new(TEST_KEY, DjbCrypto::FFI::Salsa2020)
 nonce = SecureRandom.random_bytes(8)
 msg20 = fbox20.open(nonce, fbox20.box(nonce, SMALL_MSG))
