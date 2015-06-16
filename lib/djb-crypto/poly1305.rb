@@ -1,5 +1,3 @@
-require 'securerandom'
-
 module DjbCrypto
   # Used to generate the Poly1305 authenticator (MAC) for a cipher text and
   # additional authenticated data.
