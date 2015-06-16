@@ -58,6 +58,13 @@ module DjbCrypto
       @nonce_words = nonce.unpack("V*")
     end
 
+    # @abstract
+    def rounds
+      raise NotImplementedError
+    end
+
+    private
+
     # Returns an output block.
     # @param count [Integer] block number
     # @return [Array<Integer>] output block
@@ -65,13 +72,6 @@ module DjbCrypto
       @block = new_input_block(count)
       hash
     end
-
-    # @abstract
-    def rounds
-      raise NotImplementedError
-    end
-
-    private
 
     # Expands 16-byte and 10-byte keys to a 32-byte key and sets the Salsa
     # constant accordingly.

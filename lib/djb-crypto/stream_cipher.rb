@@ -46,6 +46,14 @@ module DjbCrypto
 
     private
 
+    # Returns an output block.
+    # @param count [Integer] block number
+    # @return [Array<Integer>] output block
+    # @abstract
+    def block(count)
+      raise NotImplementedError
+    end
+
     def stream_enumerator(offset = 0)
       Enumerator.new(MAX) do |stream|
         offset.upto(MAX) do |counter|
