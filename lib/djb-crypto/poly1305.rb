@@ -26,6 +26,9 @@ module DjbCrypto
       # @param key [String] one-time key
       # @param mac_data [String] MAC data
       def tag(key, mac_data)
+        if key.bytesize != KEY_SIZE
+          raise "incorrect key length (#{key.bytesize} instead of #{KEY_SIZE} bytes)"
+        end
         r = key.byteslice(0, KEY_SIZE/2).unpack("C*") # 16-octet LE
         s = key.byteslice(KEY_SIZE/2, KEY_SIZE/2).unpack("C*").reverse.
           inject(0) { |memo, byte| (memo << 8) | byte }
