@@ -1,16 +1,15 @@
 #include "salsa20.h"
+#include <stdio.h>
 
 // from http://cr.yp.to/salsa20.html
 #define R(a,b) (((a) << (b)) | ((a) >> (32 - (b))))
-void salsa20_hash_block(uint8_t num_rounds, uint64_t counter,
-		uint32_t in[16], uint32_t out[16]) {
+void salsa20_hash_block_with_rounds(const uint8_t rounds,
+		const uint32_t in[16], uint32_t out[16]) {
 
 	uint8_t i;
 	uint32_t x[16];
-	in[8] = counter & 0xffffffff;
-	in[9] = counter >> 32;
 	for (i = 0; i < 16; ++i) x[i] = in[i];
-	for (i = num_rounds; i > 0; i -= 2) {
+	for (i = rounds; i > 0; i -= 2) {
 		x[ 4] ^= R(x[ 0]+x[12], 7);  x[ 8] ^= R(x[ 4]+x[ 0], 9);
 		x[12] ^= R(x[ 8]+x[ 4],13);  x[ 0] ^= R(x[12]+x[ 8],18);
 		x[ 9] ^= R(x[ 5]+x[ 1], 7);  x[13] ^= R(x[ 9]+x[ 5], 9);
@@ -31,12 +30,12 @@ void salsa20_hash_block(uint8_t num_rounds, uint64_t counter,
 	for (i = 0; i < 16; ++i) out[i] = x[i] + in[i];
 }
 
-void salsa20_hash_bytes(uint8_t num_rounds, uint64_t counter,
-		uint32_t in[16], uint8_t out_bytes[64]) {
+void salsa20_hash_bytes_with_rounds(const uint8_t rounds,
+		const uint32_t in[16], uint8_t out_bytes[64]) {
 
 	uint32_t out_block[16];
 	uint8_t i, j;
-	salsa20_hash_block(num_rounds, counter, in, out_block);
+	salsa20_hash_block_with_rounds(rounds, in, out_block);
 	i = 0;
 	for(j=0; j<16; ++j) { // convert LE words to bytes
 		out_bytes[i++] = out_block[j] >> 0;
@@ -46,46 +45,131 @@ void salsa20_hash_bytes(uint8_t num_rounds, uint64_t counter,
 	}
 }
 
-void salsa20_hash_xor(uint8_t num_rounds, uint32_t in[16],
-		size_t mlen, const uint8_t *msg, uint8_t *xor_msg) {
+// with rounds and initialized counter
+void salsa20_hash_xor_with_rounds_ic(
+		const uint8_t rounds,
+		const uint8_t key[32],
+		const uint64_t nonce,
+		size_t mlen,
+		const uint8_t *msg,
+		uint8_t *ct,
+		uint64_t counter) {
+
+	uint32_t *k = (uint32_t*) key;
+	uint32_t block[16] = {
+	salsa20_c32[0],           k[0],           k[1],           k[2],
+		  k[3], salsa20_c32[1],          nonce,      nonce>>32,
+		     0,              0, salsa20_c32[2],           k[4],
+		  k[5],           k[6],           k[7], salsa20_c32[3]
+	};
 
 	uint8_t i; // will only hold values 0..63
-	uint64_t counter = 1;
 	uint8_t out[64];
 
 	while(mlen > 64) {
-		salsa20_hash_bytes(num_rounds, counter, in, out);
-		for(i=0; i<64; ++i) xor_msg[i] = msg[i] ^ out[i];
+		block[8] = counter & 0xffffffff;
+		block[9] = counter >> 32;
+		salsa20_hash_bytes_with_rounds(rounds, block, out);
+		for(i=0; i<64; ++i) ct[i] = msg[i] ^ out[i];
 
 		mlen -= 64;
 		msg += 64;
-		xor_msg += 64;
+		ct += 64;
 		++counter;
 	}
 
 
 	if (mlen) {
-		salsa20_hash_bytes(num_rounds, counter, in, out);
-		for(i=0; i < mlen; ++i) xor_msg[i] = msg[i] ^ out[i];
+		block[8] = counter & 0xffffffff;
+		block[9] = counter >> 32;
+		salsa20_hash_bytes_with_rounds(rounds, block, out);
+		for(i=0; i < mlen; ++i) ct[i] = msg[i] ^ out[i];
 	}
 }
 
-void salsa20_first_bytes(uint8_t num_rounds, uint32_t in[16],
-		size_t len, uint8_t *bytes) {
+// starts at counter = 1
+// useful because usually the very first block is used to derive the MAC key
+void salsa20_hash_xor_with_rounds(
+		const uint8_t rounds,
+		const uint8_t key[32],
+		const uint64_t nonce,
+		size_t mlen,
+		const uint8_t *msg,
+		uint8_t *ct
+		) {
 
-	uint64_t counter = 0;
-	size_t i = 0;
-	uint8_t out[64];
+	salsa20_hash_xor_with_rounds_ic(rounds, key, nonce, mlen, msg, ct, 1);
+}
 
-	while (len > 64) {
-		salsa20_hash_bytes(num_rounds, counter, in, bytes);
-		len -= 64;
-		bytes += 64;
-		++counter;
-	}
+uint8_t* salsa20_first_bytes_with_rounds(
+		uint8_t rounds,
+		const uint8_t key[32],
+		const uint64_t nonce,
+		size_t nbytes
+		) {
 
-	if (len) {
-		salsa20_hash_bytes(num_rounds, counter, in, out);
-		for(i=0; i < len; ++i) bytes[i] = out[i];
-	}
+	uint8_t *ct = calloc(nbytes, sizeof(uint8_t));
+	assert(ct);
+	salsa20_hash_xor_with_rounds_ic(rounds, key, nonce, nbytes, ct, ct, 0);
+	return ct;
+}
+
+// Salsa20/20
+void salsa20_hash_xor(
+		const uint8_t key[32],
+		const uint64_t nonce,
+		size_t mlen,
+		const uint8_t *msg,
+		uint8_t *ct
+		) {
+	salsa20_hash_xor_with_rounds(20, key, nonce, mlen, msg, ct);
+}
+
+// Salsa20/12
+void salsa2012_hash_xor(
+		const uint8_t key[32],
+		const uint64_t nonce,
+		size_t mlen,
+		const uint8_t *msg,
+		uint8_t *ct
+		) {
+	salsa20_hash_xor_with_rounds(12, key, nonce, mlen, msg, ct);
+}
+
+// Salsa20/8
+void salsa208_hash_xor(
+		const uint8_t key[32],
+		const uint64_t nonce,
+		size_t mlen,
+		const uint8_t *msg,
+		uint8_t *ct
+		) {
+	salsa20_hash_xor_with_rounds(8, key, nonce, mlen, msg, ct);
+}
+
+// Salsa20/20
+uint8_t* salsa20_first_bytes(
+		const uint8_t key[32],
+		const uint64_t nonce,
+		size_t nbytes
+		) {
+	return salsa20_first_bytes_with_rounds(20, key, nonce, nbytes);
+}
+
+// Salsa20/12
+uint8_t* salsa2012_first_bytes(
+		const uint8_t key[32],
+		const uint64_t nonce,
+		size_t nbytes
+		) {
+	return salsa20_first_bytes_with_rounds(12, key, nonce, nbytes);
+}
+
+// Salsa20/8
+uint8_t* salsa208_first_bytes(
+		const uint8_t key[32],
+		const uint64_t nonce,
+		size_t nbytes
+		) {
+	return salsa20_first_bytes_with_rounds(8, key, nonce, nbytes);
 }

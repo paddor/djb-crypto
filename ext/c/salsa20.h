@@ -1,11 +1,56 @@
 #include <inttypes.h>
 #include <stddef.h>
+#include <stdlib.h>
+#include <assert.h>
 
-void salsa20_hash_block(uint8_t num_rounds, uint64_t counter,
-		uint32_t in[16], uint32_t out[16]);
-void salsa20_hash_bytes(uint8_t num_rounds, uint64_t counter,
-		uint32_t in[16], uint8_t out[64]);
-void salsa20_hash_xor(uint8_t num_rounds, uint32_t in[16],
-		size_t mlen, const uint8_t *msg, uint8_t *xor_msg);
-void salsa20_first_bytes(uint8_t num_rounds, uint32_t in[16],
-		size_t len, uint8_t *bytes);
+// Salsa20 constant for 32 byte keys
+static const uint32_t salsa20_c32[] =
+  { 0x61707865, 0x3320646e, 0x79622d32, 0x6b206574 };
+
+// Salsa20/20
+void salsa20_hash_xor(
+		const uint8_t key[32],
+		const uint64_t nonce,
+		size_t mlen,
+		const uint8_t *msg,
+		uint8_t *ct
+		);
+
+// Salsa20/12
+void salsa2012_hash_xor(
+		const uint8_t key[32],
+		const uint64_t nonce,
+		size_t mlen,
+		const uint8_t *msg,
+		uint8_t *ct
+		);
+
+// Salsa20/8
+void salsa208_hash_xor(
+		const uint8_t key[32],
+		const uint64_t nonce,
+		size_t mlen,
+		const uint8_t *msg,
+		uint8_t *ct
+		);
+
+// Salsa20/20
+uint8_t* salsa20_first_bytes(
+		const uint8_t key[32],
+		const uint64_t nonce,
+		size_t nbytes
+		);
+
+// Salsa20/12
+uint8_t* salsa2012_first_bytes(
+		const uint8_t key[32],
+		const uint64_t nonce,
+		size_t nbytes
+		);
+
+// Salsa20/8
+uint8_t* salsa208_first_bytes(
+		const uint8_t key[32],
+		const uint64_t nonce,
+		size_t nbytes
+		);
